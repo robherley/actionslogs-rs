@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>Actions Log Parser</title>
+    <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦀</text></svg>">
+    <style>
+      * {
+        color-scheme: dark;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, helvetica, Cantarell, Ubuntu, roboto, noto, arial, sans-serif;
+        color: #c9d1d9;
+        background-color: #0d1117;
+      }
+
+      textarea {
+        background-color: #3b3b3b;
+      }
+
+      pre {
+        font-family: Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace;
+        color: #63c174;
+      }
+
+      .main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+
+      .main > * {
+        margin: 0.5rem;
+      }
+
+      .main > pre {
+        width: 100%;
+        max-width: 800px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import init, { parse } from "/dist/actionslogs.js";
+      await init()
+
+      document.getElementById("lines").addEventListener("input", (e) => {
+        const lines = e.target.value;
+        const start = performance.now();
+        const obj = JSON.parse(parse(lines));
+        const end = performance.now();
+        document.getElementById("clock").innerHTML = `⏱️ ${end - start} ms`;
+        document.getElementById("output").innerHTML = JSON.stringify(obj, null, 2);
+      });
+    </script>
+    <div class="main">
+      <h1>Actions Log Parser</h1>
+      <textarea id="lines" rows="10" cols="100" spellcheck="false"></textarea>
+      <div id="clock"></div>
+      <pre id="output"></pre>
+    </div>
+  </body>
+</html>

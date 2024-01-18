@@ -1,0 +1,4 @@
+#!/bin/bash
+
+set -eo pipefail
+wasm-pack build --target web --out-dir web/dist/
