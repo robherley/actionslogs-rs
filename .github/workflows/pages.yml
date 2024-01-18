@@ -14,10 +14,9 @@ jobs:
     - name: Build WASM
       run: script/build
     - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-pages-artifact@v3
       with:
-        name: github-pages
-        path: web
+        path: web/
   deploy:
     needs: build
     runs-on: ubuntu-latest
