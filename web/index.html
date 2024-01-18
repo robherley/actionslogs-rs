@@ -18,6 +18,7 @@
       }
 
       textarea {
+        font-family: Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace;
         background-color: #3b3b3b;
       }
 
@@ -47,7 +48,7 @@
   </head>
   <body>
     <script type="module">
-      import init, { parse } from "/dist/actionslogs.js";
+      import init, { parse } from "./dist/actionslogs.js";
       await init()
 
       document.getElementById("lines").addEventListener("input", (e) => {
@@ -61,7 +62,7 @@
     </script>
     <div class="main">
       <h1>Actions Log Parser</h1>
-      <textarea id="lines" rows="10" cols="100" spellcheck="false"></textarea>
+      <textarea id="lines" rows="10" cols="100" spellcheck="false" placeholder="Type some logs here"></textarea>
       <div id="clock"></div>
       <pre id="output"></pre>
     </div>
