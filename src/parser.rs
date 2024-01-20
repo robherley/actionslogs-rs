@@ -1,5 +1,6 @@
 use crate::log::{Command, Group, Line};
 use serde::Serialize;
+use wasm_bindgen::prelude::JsValue;
 
 #[derive(Debug, Serialize)]
 pub enum Node {
@@ -39,6 +40,10 @@ impl Parser {
 
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(&self.nodes)
+    }
+
+    pub fn to_js(&self) -> Result<JsValue, serde_wasm_bindgen::Error> {
+        serde_wasm_bindgen::to_value(&self.nodes)
     }
 
     pub fn add_raw(&mut self, raw: &str) {

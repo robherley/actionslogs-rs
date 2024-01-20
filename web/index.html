@@ -54,10 +54,10 @@
       document.getElementById("lines").addEventListener("input", (e) => {
         const lines = e.target.value;
         const start = performance.now();
-        const obj = JSON.parse(parse(lines));
+        const result = parse(lines);
         const end = performance.now();
         document.getElementById("clock").innerHTML = `⏱️ ${end - start} ms`;
-        document.getElementById("output").innerHTML = JSON.stringify(obj, null, 2);
+        document.getElementById("output").innerHTML = JSON.stringify(result, null, 2);
       });
     </script>
     <div class="main">

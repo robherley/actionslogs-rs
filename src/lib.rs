@@ -8,8 +8,8 @@ pub use log::{Command, Group, Line};
 pub use parser::{Node, Parser};
 
 #[wasm_bindgen]
-pub fn parse(raw: &str) -> String {
+pub fn parse(raw: &str) -> JsValue {
     let mut parser = Parser::new();
     parser.add_raw(raw);
-    parser.to_json().unwrap()
+    parser.to_js().unwrap()
 }
