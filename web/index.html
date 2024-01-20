@@ -48,16 +48,19 @@
   </head>
   <body>
     <script type="module">
-      import init, { parse } from "./dist/actionslogs.js";
+      import init, { Parser } from "./dist/actionslogs.js";
       await init()
+
+      window.Parser = Parser;
 
       document.getElementById("lines").addEventListener("input", (e) => {
         const lines = e.target.value;
         const start = performance.now();
-        const result = parse(lines);
+        const parser = new Parser();
+        parser.addRaw(lines);
         const end = performance.now();
         document.getElementById("clock").innerHTML = `⏱️ ${end - start} ms`;
-        document.getElementById("output").innerHTML = JSON.stringify(result, null, 2);
+        document.getElementById("output").innerHTML = JSON.stringify(parser.toObject(), null, 2);
       });
     </script>
     <div class="main">

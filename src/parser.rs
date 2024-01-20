@@ -1,6 +1,6 @@
 use crate::log::{Command, Group, Line};
 use serde::Serialize;
-use wasm_bindgen::prelude::JsValue;
+use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Serialize)]
 pub enum Node {
@@ -8,13 +8,16 @@ pub enum Node {
     Group(Group),
 }
 
+#[wasm_bindgen]
 #[derive(Debug, Serialize)]
 pub struct Parser {
-    pub nodes: Vec<Node>,
+    nodes: Vec<Node>,
     idx: usize,
 }
 
+#[wasm_bindgen]
 impl Parser {
+    #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
@@ -38,19 +41,19 @@ impl Parser {
         }
     }
 
-    pub fn to_json(&self) -> Result<String, serde_json::Error> {
-        serde_json::to_string(&self.nodes)
-    }
-
-    pub fn to_js(&self) -> Result<JsValue, serde_wasm_bindgen::Error> {
+    #[wasm_bindgen(js_name = toObject)]
+    pub fn to_object(&self) -> Result<JsValue, serde_wasm_bindgen::Error> {
         serde_wasm_bindgen::to_value(&self.nodes)
     }
 
+    #[wasm_bindgen(js_name = addRaw)]
     pub fn add_raw(&mut self, raw: &str) {
-        raw.lines().for_each(|line| self.add_line(None, line));
+        raw.lines().for_each(|line| self.add_line("", line));
     }
 
-    pub fn add_line(&mut self, id: Option<&str>, raw: &str) {
+    #[wasm_bindgen(js_name = addLine)]
+    pub fn add_line(&mut self, id: &str, raw: &str) {
+        let id = if id.is_empty() { None } else { Some(id) };
         let line = Line::new(self.idx, id, raw);
 
         match line.cmd {
