@@ -18,49 +18,68 @@ pub enum ANSISequence {
 }
 
 impl ANSISequence {
-    pub fn from(seq: String) -> Option<Self> {
-        let pieces: Vec<u8> = seq
+    fn match_seqs(mut seq: Vec<u8>) -> (Option<Self>, Vec<u8>) {
+        if seq.is_empty() {
+            return (None, seq);
+        }
+
+        let matched = match seq[0] {
+            0 => Some((ANSISequence::Reset, 1)),
+            1 => Some((ANSISequence::Bold, 1)),
+            3 => Some((ANSISequence::Italic, 1)),
+            4 => Some((ANSISequence::Underline, 1)),
+            22 => Some((ANSISequence::NotBold, 1)),
+            23 => Some((ANSISequence::NotItalic, 1)),
+            24 => Some((ANSISequence::NotUnderline, 1)),
+            // https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
+            30..=37 => Some((ANSISequence::SetFG8(seq[0] - 30), 1)), // 30-37 are the 4bit colors
+            38 => match (seq.get(1), seq.get(2), seq.get(3), seq.get(4)) {
+                (Some(5), Some(0..=255), None, None) => Some((ANSISequence::SetFG8(seq[2]), 3)),
+                (Some(2), Some(0..=255), Some(0..=255), Some(0..=255)) => {
+                    Some((ANSISequence::SetFG24(seq[2], seq[3], seq[4]), 5))
+                }
+                _ => None,
+            },
+            39 => Some((ANSISequence::DefaultFG, 1)),
+            40..=47 => Some((ANSISequence::SetBG8(seq[0] - 40), 1)), // 40-47 are the 4bit colors
+            48 => match (seq.get(1), seq.get(2), seq.get(3), seq.get(4)) {
+                (Some(5), Some(0..=255), None, None) => Some((ANSISequence::SetBG8(seq[2]), 3)),
+                (Some(2), Some(0..=255), Some(0..=255), Some(0..=255)) => {
+                    Some((ANSISequence::SetBG24(seq[2], seq[3], seq[4]), 5))
+                }
+                _ => None,
+            },
+            49 => Some((ANSISequence::DefaultBG, 1)),
+            90..=97 => Some((ANSISequence::SetFG8(seq[0] - 90 + 8), 1)), // 90-97 are the 4bit high intensity
+            100..=107 => Some((ANSISequence::SetBG8(seq[0] - 100 + 8), 1)), // 100-107 are the 4bit high intensity
+            _ => None,
+        };
+
+        match matched {
+            Some((ansi, len)) => (Some(ansi), seq.split_off(len)),
+            None => (None, seq),
+        }
+    }
+
+    pub fn from(seq: String) -> Option<Vec<Self>> {
+        let mut possible_seqs: Vec<u8> = seq
             .split(';')
             .map(|n| n.parse::<u8>())
             .collect::<Result<Vec<u8>, _>>()
             .ok()?;
 
-        match pieces.len() {
-            1 => match pieces[0] {
-                0 => Some(ANSISequence::Reset),
-                1 => Some(ANSISequence::Bold),
-                3 => Some(ANSISequence::Italic),
-                4 => Some(ANSISequence::Underline),
-                22 => Some(ANSISequence::NotBold),
-                23 => Some(ANSISequence::NotItalic),
-                24 => Some(ANSISequence::NotUnderline),
-                // https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
-                30..=37 => Some(ANSISequence::SetFG8(pieces[0] - 30)), // 30-37 are the 4bit colors
-                39 => Some(ANSISequence::DefaultFG),
-                40..=47 => Some(ANSISequence::SetBG8(pieces[0] - 40)), // 40-47 are the 4bit colors
-                49 => Some(ANSISequence::DefaultBG),
-                90..=97 => Some(ANSISequence::SetFG8(pieces[0] - 90 + 8)), // 90-97 are the 4bit high intensity
-                100..=107 => Some(ANSISequence::SetBG8(pieces[0] - 100 + 8)), // 100-107 are the 4bit high intensity
-                _ => None,
-            },
-            // https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
-            3 => match pieces[..] {
-                [38, 5, 0..=255] => Some(ANSISequence::SetFG8(pieces[2])),
-                [48, 5, 0..=255] => Some(ANSISequence::SetBG8(pieces[2])),
-                _ => None,
-            },
-            // https://en.wikipedia.org/wiki/ANSI_escape_code#24-bit
-            5 => match pieces[..] {
-                [38, 2, 0..=255, 0..=255, 0..=255] => {
-                    Some(ANSISequence::SetFG24(pieces[2], pieces[3], pieces[4]))
-                }
-                [48, 2, 0..=255, 0..=255, 0..=255] => {
-                    Some(ANSISequence::SetBG24(pieces[2], pieces[3], pieces[4]))
-                }
-                _ => None,
-            },
-            _ => None,
+        let mut seqs = Vec::new();
+        while !possible_seqs.is_empty() {
+            let (matched, rest) = ANSISequence::match_seqs(possible_seqs);
+            match matched {
+                Some(seq) => seqs.push(seq),
+                // if any part of the sequence fails to match treat the whole thing as invalid
+                None => return None,
+            }
+            possible_seqs = rest;
         }
+
+        Some(seqs)
     }
 }
 
@@ -76,13 +95,13 @@ pub fn extract_ansi(raw: String) -> (String, Vec<(ANSISequence, usize)>) {
             ('\x1b', Some('[')) => {
                 chars.next();
                 let mut acc = String::new();
-                let mut seq: Option<ANSISequence> = None;
+                let mut seqs: Option<Vec<ANSISequence>> = None;
 
                 // Read until we find 'm' or run out of chars
                 loop {
                     match chars.next() {
                         Some('m') => {
-                            seq = ANSISequence::from(acc.clone());
+                            seqs = ANSISequence::from(acc.clone());
                             acc.push('m');
                             break;
                         }
@@ -95,10 +114,12 @@ pub fn extract_ansi(raw: String) -> (String, Vec<(ANSISequence, usize)>) {
                     }
                 }
 
-                match seq {
+                match seqs {
                     // Found a valid sequence, push & mark the index
-                    Some(seq) => {
-                        ansi_seqs.push((seq, scrubbed.len()));
+                    Some(seqs) => {
+                        for seq in seqs {
+                            ansi_seqs.push((seq, scrubbed.len()));
+                        }
                     }
                     // Nothing found just push what we've seen
                     None => {
@@ -332,9 +353,25 @@ mod tests {
 
     #[test]
     fn invalid_junk() {
-        let raw = "\u{1b}[1337minvalid\u{1b}[0;0;0;0;0;0;0;0;0;0;0;0;0mwithout an m:\u{1b}[0";
+        let raw = "\u{1b}[1337minvalid\u{1b}[1337;1337;1337;1337mwithout an m:\u{1b}[0";
         let got = extract_ansi(raw.to_string());
         assert_eq!(raw, got.0);
         assert!(got.1.is_empty());
+    }
+
+    #[test]
+    fn multi_seq() {
+        let raw = "\u{1b}[36;1mbold cyan\u{1b}[0m";
+        let got = extract_ansi(raw.to_string());
+        let want = (
+            String::from("bold cyan"),
+            vec![
+                (ANSISequence::SetFG8(6), 0),
+                (ANSISequence::Bold, 0),
+                (ANSISequence::Reset, 9),
+            ],
+        );
+        assert_eq!(want.0, got.0);
+        assert!(want.1.iter().eq(got.1.iter()));
     }
 }
