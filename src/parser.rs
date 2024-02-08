@@ -11,8 +11,9 @@ pub enum Node {
 #[wasm_bindgen]
 #[derive(Debug, Serialize)]
 pub struct Parser {
-    nodes: Vec<Node>,
     idx: usize,
+    nodes: Vec<Node>,
+    search: String,
 }
 
 #[wasm_bindgen]
@@ -20,8 +21,9 @@ impl Parser {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
-            nodes: Vec::new(),
             idx: 1,
+            nodes: Vec::new(),
+            search: "".to_string(),
         }
     }
 
@@ -58,16 +60,16 @@ impl Parser {
     }
 
     #[wasm_bindgen(js_name = setHighlight)]
-    pub fn set_highlight(&mut self, search_term: &str) {
-        let search_term = search_term.to_lowercase();
+    pub fn set_search(&mut self, search: &str) {
+        self.search = search.to_lowercase();
         for node in self.nodes.iter_mut() {
             match node {
                 Node::Line(line) => {
-                    line.highlight(&search_term);
+                    line.highlight(&self.search);
                 }
                 Node::Group(group) => {
                     for line in group.children.iter_mut() {
-                        line.highlight(&search_term);
+                        line.highlight(&self.search);
                     }
                 }
             }
@@ -77,7 +79,11 @@ impl Parser {
     #[wasm_bindgen(js_name = addLine)]
     pub fn add_line(&mut self, id: &str, raw: &str) {
         let id = if id.is_empty() { None } else { Some(id) };
-        let line = Line::new(self.idx, id, raw);
+        let mut line = Line::new(self.idx, id, raw);
+
+        if !self.search.is_empty() {
+            line.highlight(&self.search);
+        }
 
         match line.cmd {
             Some(Command::EndGroup) => {
@@ -217,5 +223,41 @@ mod tests {
             },
             _ => panic!("expected Node::Line"),
         });
+    }
+
+    #[test]
+    fn search() {
+        let lines = concat!("foo\n", "bar\n", "baz\n");
+
+        let mut parser = Parser::new();
+        parser.set_raw(lines);
+
+        let get_matches = |parser: &Parser| -> Vec<bool> {
+            parser
+                .nodes
+                .iter()
+                .map(|node| match node {
+                    Node::Line(line) => !line.highlights.is_empty(),
+                    _ => false,
+                })
+                .collect()
+        };
+
+        assert_eq!(parser.nodes.len(), 3);
+        assert_eq!(get_matches(&parser), vec![false, false, false]);
+
+        parser.set_search("bar");
+        assert_eq!(get_matches(&parser), vec![false, true, false]);
+        match parser.nodes.get(1) {
+            Some(Node::Line(line)) => assert_eq!(line.highlights, vec![(0, 2)]),
+            _ => panic!("expected Node::Line"),
+        }
+
+        parser.add_line("", "----> bar <----");
+        assert_eq!(get_matches(&parser), vec![false, true, false, true]);
+        match parser.nodes.get(3) {
+            Some(Node::Line(line)) => assert_eq!(line.highlights, vec![(6, 8)]),
+            _ => panic!("expected Node::Line"),
+        }
     }
 }
