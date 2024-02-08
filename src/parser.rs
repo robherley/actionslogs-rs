@@ -25,6 +25,11 @@ impl Parser {
         }
     }
 
+    fn reset(&mut self) {
+        self.nodes.clear();
+        self.idx = 1;
+    }
+
     fn end_group(&mut self) {
         match self.nodes.last_mut() {
             Some(Node::Group(group)) => {
@@ -46,9 +51,27 @@ impl Parser {
         serde_wasm_bindgen::to_value(&self.nodes)
     }
 
-    #[wasm_bindgen(js_name = addRaw)]
-    pub fn add_raw(&mut self, raw: &str) {
+    #[wasm_bindgen(js_name = setRaw)]
+    pub fn set_raw(&mut self, raw: &str) {
+        self.reset();
         raw.lines().for_each(|line| self.add_line("", line));
+    }
+
+    #[wasm_bindgen(js_name = setHighlight)]
+    pub fn set_highlight(&mut self, search_term: &str) {
+        let search_term = search_term.to_lowercase();
+        for node in self.nodes.iter_mut() {
+            match node {
+                Node::Line(line) => {
+                    line.highlight(&search_term);
+                }
+                Node::Group(group) => {
+                    for line in group.children.iter_mut() {
+                        line.highlight(&search_term);
+                    }
+                }
+            }
+        }
     }
 
     #[wasm_bindgen(js_name = addLine)]
@@ -107,7 +130,7 @@ mod tests {
         );
 
         let mut parser = Parser::new();
-        parser.add_raw(lines);
+        parser.set_raw(lines);
 
         assert_eq!(parser.nodes.len(), 6);
 
@@ -142,7 +165,7 @@ mod tests {
         );
 
         let mut parser = Parser::new();
-        parser.add_raw(lines);
+        parser.set_raw(lines);
 
         assert_eq!(parser.nodes.len(), 3);
 
@@ -172,7 +195,7 @@ mod tests {
         );
 
         let mut parser = Parser::new();
-        parser.add_raw(lines);
+        parser.set_raw(lines);
 
         assert_eq!(parser.nodes.len(), 5);
 

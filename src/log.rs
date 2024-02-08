@@ -43,6 +43,7 @@ pub struct Line {
     pub content: String,
     pub links: Vec<(usize, usize, String)>,
     pub ansis: Vec<(ANSISequence, usize)>,
+    pub highlights: Vec<(usize, usize)>,
 }
 
 impl Line {
@@ -62,7 +63,22 @@ impl Line {
             content: content.to_string(),
             links: links.collect(),
             ansis,
+            highlights: Vec::new(),
         }
+    }
+
+    pub fn highlight(&mut self, search_term: &str) {
+        if search_term.is_empty() {
+            self.highlights.clear();
+            return;
+        }
+
+        self.highlights = self
+            .content
+            .to_lowercase()
+            .match_indices(search_term.to_lowercase().as_str())
+            .map(|(i, _)| (i, i + search_term.len() - 1))
+            .collect();
     }
 
     fn parse_ts<'a>(id: Option<&'a str>, raw: &str) -> (i64, String) {
@@ -191,5 +207,25 @@ mod tests {
         assert_eq!(line.links[0].0, 4);
         assert_eq!(line.links[0].1, 18);
         assert_eq!(line.links[0].2, "https://reb.gg");
+    }
+
+    #[test]
+    fn highlights() {
+        let mut line = Line::new(1, None, "foo bar baz bAr");
+        line.highlight("bar");
+
+        assert_eq!(line.highlights.len(), 2);
+        assert_eq!(line.highlights[0], (4, 6));
+        assert_eq!(line.highlights[1], (12, 14));
+
+        line.highlight("BAR");
+
+        assert_eq!(line.highlights.len(), 2);
+        assert_eq!(line.highlights[0], (4, 6));
+        assert_eq!(line.highlights[1], (12, 14));
+
+        line.highlight("");
+
+        assert_eq!(line.highlights.len(), 0);
     }
 }

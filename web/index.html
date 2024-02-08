@@ -33,6 +33,8 @@
         align-items: center;
         justify-content: center;
         padding: 2rem;
+        margin: 0 auto;
+        max-width: 800px;
       }
 
       .main > * {
@@ -41,8 +43,16 @@
 
       .main > pre {
         width: 100%;
-        max-width: 800px;
         overflow-x: auto;
+      }
+
+      .main > textarea {
+        width: 100%;
+      }
+
+      .main > .search {
+        align-self: flex-end;
+        margin-right: 0;
       }
     </style>
   </head>
@@ -51,21 +61,42 @@
       import init, { Parser } from "./dist/actionslogs.js";
       await init()
 
-      window.Parser = Parser;
+      window.Parser = new Parser();
+
+      const stopwatch = (fn) => {
+        const start = performance.now();
+        fn();
+        const end = performance.now();
+        document.getElementById("clock").innerHTML = `⏱️ ${end - start} ms`;
+      }
+
+      const updateOutput = () => {
+        document.getElementById("output").innerHTML = JSON.stringify(window.Parser.toObject(), null, 2);
+      }
 
       document.getElementById("lines").addEventListener("input", (e) => {
         const lines = e.target.value;
-        const start = performance.now();
-        const parser = new Parser();
-        parser.addRaw(lines);
-        const end = performance.now();
-        document.getElementById("clock").innerHTML = `⏱️ ${end - start} ms`;
-        document.getElementById("output").innerHTML = JSON.stringify(parser.toObject(), null, 2);
+        stopwatch(() =>
+          window.Parser.setRaw(lines)
+        );
+        updateOutput();
+      });
+
+      document.getElementById("search").addEventListener("input", (e) => {
+        const search = e.target.value;
+        stopwatch(() =>
+          window.Parser.setHighlight(search)
+        );
+        updateOutput();
       });
     </script>
     <div class="main">
       <h1>Actions Log Parser</h1>
-      <textarea id="lines" rows="10" cols="100" spellcheck="false" placeholder="Type some logs here"></textarea>
+      <div class="search">
+        <label for="search">🔍</label>
+        <input id="search" type="text" placeholder="Search" />
+      </div>
+      <textarea id="lines" rows="10" cols="100" spellcheck="false" placeholder="##[info]hello world!"></textarea>
       <div id="clock"></div>
       <pre id="output"></pre>
     </div>
