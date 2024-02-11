@@ -59,7 +59,7 @@ impl Parser {
         raw.lines().for_each(|line| self.add_line("", line));
     }
 
-    #[wasm_bindgen(js_name = setHighlight)]
+    #[wasm_bindgen(js_name = setSearch)]
     pub fn set_search(&mut self, search: &str) {
         self.search = search.to_lowercase();
         for node in self.nodes.iter_mut() {
@@ -74,6 +74,26 @@ impl Parser {
                 }
             }
         }
+    }
+
+    #[wasm_bindgen(js_name = getSearch)]
+    pub fn get_search(&self) -> String {
+        self.search.clone()
+    }
+
+    #[wasm_bindgen(js_name = getMatches)]
+    pub fn get_matches(&self) -> usize {
+        self.nodes
+            .iter()
+            .map(|node| match node {
+                Node::Line(line) => line.highlights.len(),
+                Node::Group(group) => group
+                    .children
+                    .iter()
+                    .map(|line| line.highlights.len())
+                    .sum(),
+            })
+            .sum()
     }
 
     #[wasm_bindgen(js_name = addLine)]
@@ -232,7 +252,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_raw(lines);
 
-        let get_matches = |parser: &Parser| -> Vec<bool> {
+        let find_matches = |parser: &Parser| -> Vec<bool> {
             parser
                 .nodes
                 .iter()
@@ -244,20 +264,30 @@ mod tests {
         };
 
         assert_eq!(parser.nodes.len(), 3);
-        assert_eq!(get_matches(&parser), vec![false, false, false]);
+        assert_eq!(find_matches(&parser), vec![false, false, false]);
 
         parser.set_search("bar");
-        assert_eq!(get_matches(&parser), vec![false, true, false]);
+        assert_eq!(parser.get_matches(), 1);
+        assert_eq!(find_matches(&parser), vec![false, true, false]);
         match parser.nodes.get(1) {
             Some(Node::Line(line)) => assert_eq!(line.highlights, vec![(0, 2)]),
             _ => panic!("expected Node::Line"),
         }
 
         parser.add_line("", "----> bar <----");
-        assert_eq!(get_matches(&parser), vec![false, true, false, true]);
+        assert_eq!(parser.get_matches(), 2);
+        assert_eq!(find_matches(&parser), vec![false, true, false, true]);
         match parser.nodes.get(3) {
             Some(Node::Line(line)) => assert_eq!(line.highlights, vec![(6, 8)]),
             _ => panic!("expected Node::Line"),
         }
+
+        parser.add_line("", "#[group]some group");
+        parser.add_line("", "baz bar baz");
+        parser.add_line("", "#[endgroup]");
+        assert_eq!(parser.get_matches(), 3);
+
+        parser.set_search("");
+        assert_eq!(parser.get_matches(), 0);
     }
 }

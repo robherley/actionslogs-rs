@@ -74,25 +74,32 @@
         document.getElementById("output").innerHTML = JSON.stringify(window.Parser.toObject(), null, 2);
       }
 
-      document.getElementById("lines").addEventListener("input", (e) => {
-        const lines = e.target.value;
-        stopwatch(() =>
-          window.Parser.setRaw(lines)
-        );
-        updateOutput();
-      });
+      const updateMatches = () => {
+        document.getElementById("matches").innerHTML = `${window.Parser.getMatches()}`;
+      }
 
-      document.getElementById("search").addEventListener("input", (e) => {
-        const search = e.target.value;
-        stopwatch(() =>
-          window.Parser.setHighlight(search)
-        );
-        updateOutput();
-      });
+      document.getElementById("lines").addEventListener("input", ({ target: {value: lines} }) =>
+        stopwatch(() => {
+          window.Parser.setRaw(lines)
+          if (window.Parser.getSearch().length > 0) {
+            updateMatches();
+          }
+          updateOutput();
+        })
+      );
+
+      document.getElementById("search").addEventListener("input", ({ target: {value: search} }) =>
+        stopwatch(() => {
+          window.Parser.setSearch(search)
+          updateMatches();
+          updateOutput();
+        })
+      );
     </script>
     <div class="main">
       <h1>Actions Log Parser</h1>
       <div class="search">
+        <span id="matches"></span>
         <label for="search">🔍</label>
         <input id="search" type="text" placeholder="Search" />
       </div>
