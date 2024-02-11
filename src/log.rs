@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use linkify::LinkFinder;
 use serde::Serialize;
@@ -42,7 +44,7 @@ pub struct Line {
     pub ts: i64,
     pub content: String,
     pub links: Vec<(usize, usize, String)>,
-    pub ansis: Vec<(ANSISequence, usize)>,
+    pub ansis: HashMap<usize, Vec<ANSISequence>>,
     pub highlights: Vec<(usize, usize)>,
 }
 
@@ -196,8 +198,8 @@ mod tests {
     fn ansi() {
         let line = Line::new(1, None, "\u{1b}[31mfoo\u{1b}[0m");
         assert_eq!(line.ansis.len(), 2);
-        assert_eq!(line.ansis[0].0, ANSISequence::SetFG8(1));
-        assert_eq!(line.ansis[1].0, ANSISequence::Reset);
+        assert_eq!(line.ansis[&(0 as usize)], vec![ANSISequence::SetFG8(1)]);
+        assert_eq!(line.ansis[&(3 as usize)], vec![ANSISequence::Reset]);
     }
 
     #[test]

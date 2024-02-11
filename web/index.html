@@ -71,7 +71,7 @@
       }
 
       const updateOutput = () => {
-        document.getElementById("output").innerHTML = JSON.stringify(window.Parser.toObject(), null, 2);
+        document.getElementById("output").innerHTML = window.Parser.stringify(true);
       }
 
       const updateMatches = () => {

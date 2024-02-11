@@ -48,9 +48,18 @@ impl Parser {
         }
     }
 
-    #[wasm_bindgen(js_name = toObject)]
-    pub fn to_object(&self) -> Result<JsValue, serde_wasm_bindgen::Error> {
-        serde_wasm_bindgen::to_value(&self.nodes)
+    #[wasm_bindgen(js_name = stringify)]
+    pub fn stringify(&self, pretty: bool) -> Result<String, JsError> {
+        let serialize_fn = if pretty {
+            serde_json::to_string_pretty
+        } else {
+            serde_json::to_string
+        };
+
+        match serialize_fn(&self.nodes) {
+            Ok(json) => Ok(json),
+            Err(err) => Err(JsError::new(&format!("{:?}", err))),
+        }
     }
 
     #[wasm_bindgen(js_name = setRaw)]

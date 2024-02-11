@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::Serialize;
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -83,10 +85,10 @@ impl ANSISequence {
     }
 }
 
-pub fn extract_ansi(raw: String) -> (String, Vec<(ANSISequence, usize)>) {
+pub fn extract_ansi(raw: String) -> (String, HashMap<usize, Vec<ANSISequence>>) {
     let mut scrubbed = String::new();
     scrubbed.reserve(raw.len());
-    let mut ansi_seqs = Vec::new();
+    let mut ansi_map: HashMap<usize, Vec<ANSISequence>> = HashMap::new();
 
     let mut chars = raw.chars().peekable();
     while let Some(ch) = chars.next() {
@@ -116,11 +118,12 @@ pub fn extract_ansi(raw: String) -> (String, Vec<(ANSISequence, usize)>) {
 
                 match seqs {
                     // Found a valid sequence, push & mark the index
-                    Some(seqs) => {
-                        for seq in seqs {
-                            ansi_seqs.push((seq, scrubbed.len()));
+                    Some(seqs) => match ansi_map.get_mut(&scrubbed.len()) {
+                        Some(existing) => existing.extend(seqs),
+                        None => {
+                            ansi_map.insert(scrubbed.len(), seqs);
                         }
-                    }
+                    },
                     // Nothing found just push what we've seen
                     None => {
                         scrubbed.push_str("\x1b[");
@@ -135,7 +138,7 @@ pub fn extract_ansi(raw: String) -> (String, Vec<(ANSISequence, usize)>) {
         }
     }
 
-    (scrubbed, ansi_seqs)
+    (scrubbed, ansi_map)
 }
 
 #[cfg(test)]
@@ -148,10 +151,13 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("reset"),
-            vec![(ANSISequence::Reset, 0), (ANSISequence::Reset, 5)],
+            HashMap::from([
+                (0, vec![ANSISequence::Reset]),
+                (5, vec![ANSISequence::Reset]),
+            ]),
         );
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -160,10 +166,13 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("bold"),
-            vec![(ANSISequence::Bold, 0), (ANSISequence::NotBold, 4)],
+            HashMap::from([
+                (0, vec![ANSISequence::Bold]),
+                (4, vec![ANSISequence::NotBold]),
+            ]),
         );
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -172,10 +181,13 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("italic"),
-            vec![(ANSISequence::Italic, 0), (ANSISequence::NotItalic, 6)],
+            HashMap::from([
+                (0, vec![ANSISequence::Italic]),
+                (6, vec![ANSISequence::NotItalic]),
+            ]),
         );
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -184,13 +196,13 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("underline"),
-            vec![
-                (ANSISequence::Underline, 0),
-                (ANSISequence::NotUnderline, 9),
-            ],
+            HashMap::from([
+                (0, vec![ANSISequence::Underline]),
+                (9, vec![ANSISequence::NotUnderline]),
+            ]),
         );
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -199,20 +211,25 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("4bit-colors"),
-            vec![
-                (ANSISequence::SetFG8(0), 0),
-                (ANSISequence::SetFG8(1), 0),
-                (ANSISequence::SetFG8(2), 0),
-                (ANSISequence::SetFG8(3), 0),
-                (ANSISequence::SetFG8(4), 0),
-                (ANSISequence::SetFG8(5), 0),
-                (ANSISequence::SetFG8(6), 0),
-                (ANSISequence::SetFG8(7), 0),
-                (ANSISequence::DefaultFG, 11),
-            ],
+            HashMap::from([
+                (
+                    0,
+                    vec![
+                        ANSISequence::SetFG8(0),
+                        ANSISequence::SetFG8(1),
+                        ANSISequence::SetFG8(2),
+                        ANSISequence::SetFG8(3),
+                        ANSISequence::SetFG8(4),
+                        ANSISequence::SetFG8(5),
+                        ANSISequence::SetFG8(6),
+                        ANSISequence::SetFG8(7),
+                    ],
+                ),
+                (11, vec![ANSISequence::DefaultFG]),
+            ]),
         );
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -221,20 +238,26 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("4bit-colors"),
-            vec![
-                (ANSISequence::SetBG8(0), 0),
-                (ANSISequence::SetBG8(1), 0),
-                (ANSISequence::SetBG8(2), 0),
-                (ANSISequence::SetBG8(3), 0),
-                (ANSISequence::SetBG8(4), 0),
-                (ANSISequence::SetBG8(5), 0),
-                (ANSISequence::SetBG8(6), 0),
-                (ANSISequence::SetBG8(7), 0),
-                (ANSISequence::DefaultBG, 11),
-            ],
+            HashMap::from([
+                (
+                    0,
+                    vec![
+                        ANSISequence::SetBG8(0),
+                        ANSISequence::SetBG8(1),
+                        ANSISequence::SetBG8(2),
+                        ANSISequence::SetBG8(3),
+                        ANSISequence::SetBG8(4),
+                        ANSISequence::SetBG8(5),
+                        ANSISequence::SetBG8(6),
+                        ANSISequence::SetBG8(7),
+                    ],
+                ),
+                (11, vec![ANSISequence::DefaultBG]),
+            ]),
         );
+
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -243,20 +266,26 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("4bit-colors high intensity"),
-            vec![
-                (ANSISequence::SetFG8(8), 0),
-                (ANSISequence::SetFG8(9), 0),
-                (ANSISequence::SetFG8(10), 0),
-                (ANSISequence::SetFG8(11), 0),
-                (ANSISequence::SetFG8(12), 0),
-                (ANSISequence::SetFG8(13), 0),
-                (ANSISequence::SetFG8(14), 0),
-                (ANSISequence::SetFG8(15), 0),
-                (ANSISequence::DefaultFG, 26),
-            ],
+            HashMap::from([
+                (
+                    0,
+                    vec![
+                        ANSISequence::SetFG8(8),
+                        ANSISequence::SetFG8(9),
+                        ANSISequence::SetFG8(10),
+                        ANSISequence::SetFG8(11),
+                        ANSISequence::SetFG8(12),
+                        ANSISequence::SetFG8(13),
+                        ANSISequence::SetFG8(14),
+                        ANSISequence::SetFG8(15),
+                    ],
+                ),
+                (26, vec![ANSISequence::DefaultFG]),
+            ]),
         );
+
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -265,20 +294,26 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("4bit-colors high intensity"),
-            vec![
-                (ANSISequence::SetBG8(8), 0),
-                (ANSISequence::SetBG8(9), 0),
-                (ANSISequence::SetBG8(10), 0),
-                (ANSISequence::SetBG8(11), 0),
-                (ANSISequence::SetBG8(12), 0),
-                (ANSISequence::SetBG8(13), 0),
-                (ANSISequence::SetBG8(14), 0),
-                (ANSISequence::SetBG8(15), 0),
-                (ANSISequence::DefaultBG, 26),
-            ],
+            HashMap::from([
+                (
+                    0,
+                    vec![
+                        ANSISequence::SetBG8(8),
+                        ANSISequence::SetBG8(9),
+                        ANSISequence::SetBG8(10),
+                        ANSISequence::SetBG8(11),
+                        ANSISequence::SetBG8(12),
+                        ANSISequence::SetBG8(13),
+                        ANSISequence::SetBG8(14),
+                        ANSISequence::SetBG8(15),
+                    ],
+                ),
+                (26, vec![ANSISequence::DefaultBG]),
+            ]),
         );
+
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -287,10 +322,14 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("8-bit"),
-            vec![(ANSISequence::SetFG8(111), 0), (ANSISequence::Reset, 5)],
+            HashMap::from([
+                (0, vec![ANSISequence::SetFG8(111)]),
+                (5, vec![ANSISequence::Reset]),
+            ]),
         );
+
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -299,10 +338,14 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("8-bit"),
-            vec![(ANSISequence::SetBG8(111), 0), (ANSISequence::Reset, 5)],
+            HashMap::from([
+                (0, vec![ANSISequence::SetBG8(111)]),
+                (5, vec![ANSISequence::Reset]),
+            ]),
         );
+
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -319,13 +362,14 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("24-bit"),
-            vec![
-                (ANSISequence::SetFG24(100, 110, 111), 0),
-                (ANSISequence::Reset, 6),
-            ],
+            HashMap::from([
+                (0, vec![ANSISequence::SetFG24(100, 110, 111)]),
+                (6, vec![ANSISequence::Reset]),
+            ]),
         );
+
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -334,13 +378,14 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("24-bit"),
-            vec![
-                (ANSISequence::SetBG24(100, 110, 111), 0),
-                (ANSISequence::Reset, 6),
-            ],
+            HashMap::from([
+                (0, vec![ANSISequence::SetBG24(100, 110, 111)]),
+                (6, vec![ANSISequence::Reset]),
+            ]),
         );
+
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 
     #[test]
@@ -365,13 +410,13 @@ mod tests {
         let got = extract_ansi(raw.to_string());
         let want = (
             String::from("bold cyan"),
-            vec![
-                (ANSISequence::SetFG8(6), 0),
-                (ANSISequence::Bold, 0),
-                (ANSISequence::Reset, 9),
-            ],
+            HashMap::from([
+                (0, vec![ANSISequence::SetFG8(6), ANSISequence::Bold]),
+                (9, vec![ANSISequence::Reset]),
+            ]),
         );
+
         assert_eq!(want.0, got.0);
-        assert!(want.1.iter().eq(got.1.iter()));
+        assert_eq!(want.1, got.1);
     }
 }
