@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize)]
 pub enum ANSISequence {
     Reset,
     Bold,
