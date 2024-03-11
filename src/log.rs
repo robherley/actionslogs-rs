@@ -43,9 +43,9 @@ pub struct Line {
     pub cmd: Option<Command>,
     pub ts: i64,
     pub content: String,
-    pub links: Vec<(usize, usize, String)>,
+    pub links: HashMap<usize, usize>,
     pub ansis: HashMap<usize, Vec<ANSISequence>>,
-    pub highlights: Vec<(usize, usize)>,
+    pub highlights: HashMap<usize, usize>,
 }
 
 impl Line {
@@ -54,18 +54,20 @@ impl Line {
         let (cmd, content) = Self::parse_cmd(content);
         let (content, ansis) = extract_ansi(content);
 
-        let links = LinkFinder::new()
+        let links: HashMap<usize, usize> = LinkFinder::new()
+            .kinds(&[linkify::LinkKind::Url])
             .links(&content)
-            .map(|link| (link.start(), link.end(), link.as_str().to_string()));
+            .map(|link| (link.start(), link.end()))
+            .collect();
 
         Self {
             number,
             cmd,
             ts,
-            content: content.to_string(),
-            links: links.collect(),
+            content,
+            links,
             ansis,
-            highlights: Vec::new(),
+            highlights: HashMap::new(),
         }
     }
 
@@ -79,7 +81,7 @@ impl Line {
             .content
             .to_lowercase()
             .match_indices(search_term.to_lowercase().as_str())
-            .map(|(i, _)| (i, i + search_term.len() - 1))
+            .map(|(i, _)| (i, i + search_term.len()))
             .collect();
     }
 
@@ -127,6 +129,12 @@ impl Line {
             },
             None => (None, raw),
         }
+    }
+}
+
+impl From<&str> for Line {
+    fn from(raw: &str) -> Self {
+        Self::new(0, None, raw)
     }
 }
 
@@ -206,9 +214,7 @@ mod tests {
     fn links() {
         let line = Line::new(1, None, "foo https://reb.gg bar");
         assert_eq!(line.links.len(), 1);
-        assert_eq!(line.links[0].0, 4);
-        assert_eq!(line.links[0].1, 18);
-        assert_eq!(line.links[0].2, "https://reb.gg");
+        assert_eq!(line.links[&(4 as usize)], 18);
     }
 
     #[test]
@@ -217,14 +223,14 @@ mod tests {
         line.highlight("bar");
 
         assert_eq!(line.highlights.len(), 2);
-        assert_eq!(line.highlights[0], (4, 6));
-        assert_eq!(line.highlights[1], (12, 14));
+        assert_eq!(line.highlights[&(4 as usize)], 7);
+        assert_eq!(line.highlights[&(12 as usize)], 15);
 
         line.highlight("BAR");
 
         assert_eq!(line.highlights.len(), 2);
-        assert_eq!(line.highlights[0], (4, 6));
-        assert_eq!(line.highlights[1], (12, 14));
+        assert_eq!(line.highlights[&(4 as usize)], 7);
+        assert_eq!(line.highlights[&(12 as usize)], 15);
 
         line.highlight("");
 
