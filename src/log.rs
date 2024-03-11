@@ -81,7 +81,7 @@ impl Line {
             .content
             .to_lowercase()
             .match_indices(search_term.to_lowercase().as_str())
-            .map(|(i, _)| (i, i + search_term.len() - 1))
+            .map(|(i, _)| (i, i + search_term.len()))
             .collect();
     }
 
@@ -223,14 +223,14 @@ mod tests {
         line.highlight("bar");
 
         assert_eq!(line.highlights.len(), 2);
-        assert_eq!(line.highlights[&(4 as usize)], 6);
-        assert_eq!(line.highlights[&(12 as usize)], 14);
+        assert_eq!(line.highlights[&(4 as usize)], 7);
+        assert_eq!(line.highlights[&(12 as usize)], 15);
 
         line.highlight("BAR");
 
         assert_eq!(line.highlights.len(), 2);
-        assert_eq!(line.highlights[&(4 as usize)], 6);
-        assert_eq!(line.highlights[&(12 as usize)], 14);
+        assert_eq!(line.highlights[&(4 as usize)], 7);
+        assert_eq!(line.highlights[&(12 as usize)], 15);
 
         line.highlight("");
 
