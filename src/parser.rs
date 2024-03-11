@@ -77,6 +77,7 @@ impl Parser {
                     line.highlight(&self.search);
                 }
                 Node::Group(group) => {
+                    group.line.highlight(&self.search);
                     for line in group.children.iter_mut() {
                         line.highlight(&self.search);
                     }

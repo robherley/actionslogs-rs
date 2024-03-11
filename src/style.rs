@@ -1,18 +1,26 @@
+use serde::Serialize;
+
 use crate::ansi::ANSISequence;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum Color {
     Bit8(u8),
     Bit24(u8, u8, u8),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct Styles {
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub bold: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub italic: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub underline: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub highlight: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fg: Option<Color>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bg: Option<Color>,
 }
 

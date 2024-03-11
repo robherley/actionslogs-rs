@@ -1,7 +1,9 @@
+use serde::Serialize;
+
 use crate::log::Line;
 use crate::style::Styles;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum Element {
     // Text(content, styles)
     Text(String, Styles),
@@ -40,7 +42,7 @@ impl Builder {
         }
     }
 
-    pub fn elements_from(&mut self, line: Line) {
+    pub fn elements_from(&mut self, line: &Line) {
         for (i, ch) in line.content.char_indices() {
             let mut new_styles = self.styles.clone();
 
@@ -123,7 +125,7 @@ impl Builder {
     }
 }
 
-pub fn build_elements(line: Line) -> Vec<Element> {
+pub fn build_elements(line: &Line) -> Vec<Element> {
     let mut builder = Builder::new();
     builder.elements_from(line);
     builder.elements
@@ -137,7 +139,7 @@ mod tests {
     #[test]
     fn simple() {
         let line = Line::from("foo bar");
-        let elements = build_elements(line);
+        let elements = build_elements(&line);
 
         let expected = vec![Element::Text("foo bar".to_string(), Styles::new())];
 
@@ -147,7 +149,7 @@ mod tests {
     #[test]
     fn link() {
         let line = Line::from("foo https://reb.gg bar");
-        let elements = build_elements(line);
+        let elements = build_elements(&line);
 
         let expected = vec![
             Element::Text("foo ".to_string(), Styles::new()),
@@ -165,7 +167,7 @@ mod tests {
     fn highlight() {
         let mut line = Line::from("foo bar");
         line.highlight("oo");
-        let elements = build_elements(line);
+        let elements = build_elements(&line);
 
         let expected = vec![
             Element::Text("f".to_string(), Styles::new()),
@@ -185,7 +187,7 @@ mod tests {
     #[test]
     fn ansis() {
         let line = Line::from("\u{1b}[36;1mbold cyan\u{1b}[0m");
-        let elements = build_elements(line);
+        let elements = build_elements(&line);
 
         let expected = vec![Element::Text(
             "bold cyan".to_string(),
@@ -203,7 +205,7 @@ mod tests {
     fn mixed() {
         let mut line = Line::from("do re me https://\u{1b}[31mreb.gg\u{1b}[0m fa la ti do");
         line.highlight("re");
-        let elements = build_elements(line);
+        let elements = build_elements(&line);
 
         let expected = vec![
             Element::Text("do ".to_string(), Styles::new()),

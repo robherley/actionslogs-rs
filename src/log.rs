@@ -5,6 +5,7 @@ use linkify::LinkFinder;
 use serde::Serialize;
 
 use crate::ansi::{extract_ansi, ANSISequence};
+use crate::element::{build_elements, Element};
 
 // https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
 #[derive(Debug, PartialEq, Serialize)]
@@ -42,9 +43,14 @@ pub struct Line {
     pub number: usize,
     pub cmd: Option<Command>,
     pub ts: i64,
+    pub elements: Vec<Element>,
+    #[serde(skip)]
     pub content: String,
+    #[serde(skip)]
     pub links: HashMap<usize, usize>,
+    #[serde(skip)]
     pub ansis: HashMap<usize, Vec<ANSISequence>>,
+    #[serde(skip)]
     pub highlights: HashMap<usize, usize>,
 }
 
@@ -60,7 +66,7 @@ impl Line {
             .map(|link| (link.start(), link.end()))
             .collect();
 
-        Self {
+        let mut line = Self {
             number,
             cmd,
             ts,
@@ -68,12 +74,24 @@ impl Line {
             links,
             ansis,
             highlights: HashMap::new(),
-        }
+            elements: Vec::new(),
+        };
+
+        // TODO(robherley): fix this/make it not awkward
+        let elements = build_elements(&line);
+        line.elements = elements;
+
+        line
     }
 
     pub fn highlight(&mut self, search_term: &str) {
         if search_term.is_empty() {
+            let had_highlights = !self.highlights.is_empty();
             self.highlights.clear();
+            if had_highlights {
+                self.elements = build_elements(self);
+            }
+
             return;
         }
 
@@ -83,6 +101,8 @@ impl Line {
             .match_indices(search_term.to_lowercase().as_str())
             .map(|(i, _)| (i, i + search_term.len()))
             .collect();
+
+        self.elements = build_elements(self);
     }
 
     fn parse_ts<'a>(id: Option<&'a str>, raw: &str) -> (i64, String) {
@@ -141,8 +161,9 @@ impl From<&str> for Line {
 #[derive(Debug, Serialize)]
 pub struct Group {
     pub line: Line,
-    pub ended: bool,
     pub children: Vec<Line>,
+    #[serde(skip)]
+    pub ended: bool,
 }
 
 impl Group {
