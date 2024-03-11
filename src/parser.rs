@@ -280,7 +280,7 @@ mod tests {
         assert_eq!(parser.get_matches(), 1);
         assert_eq!(find_matches(&parser), vec![false, true, false]);
         match parser.nodes.get(1) {
-            Some(Node::Line(line)) => assert_eq!(line.highlights, HashMap::from([(0, 2)])),
+            Some(Node::Line(line)) => assert_eq!(line.highlights, HashMap::from([(0, 3)])),
             _ => panic!("expected Node::Line"),
         }
 
@@ -288,7 +288,7 @@ mod tests {
         assert_eq!(parser.get_matches(), 2);
         assert_eq!(find_matches(&parser), vec![false, true, false, true]);
         match parser.nodes.get(3) {
-            Some(Node::Line(line)) => assert_eq!(line.highlights, HashMap::from([(6, 8)])),
+            Some(Node::Line(line)) => assert_eq!(line.highlights, HashMap::from([(6, 9)])),
             _ => panic!("expected Node::Line"),
         }
 

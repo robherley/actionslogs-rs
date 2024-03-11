@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn mixed() {
-        let mut line = Line::from("do re me https://[31mreb.gg[0m fa la ti do");
+        let mut line = Line::from("do re me https://\u{1b}[31mreb.gg\u{1b}[0m fa la ti do");
         line.highlight("re");
         let elements = build_elements(line);
 
