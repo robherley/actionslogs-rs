@@ -89,6 +89,9 @@ impl Builder {
         }
 
         self.flush();
+        if self.is_in_link() {
+            self.end_link();
+        }
     }
 
     // appends a new element with the current text accumulator and styles if text is not empty
@@ -158,6 +161,22 @@ mod tests {
                 vec![Element::Text("https://reb.gg".to_string(), Styles::new())],
             ),
             Element::Text(" bar".to_string(), Styles::new()),
+        ];
+
+        assert_eq!(elements, expected);
+    }
+
+    #[test]
+    fn ends_with_link() {
+        let line = Line::from("foo https://reb.gg");
+        let elements = build_elements(&line);
+
+        let expected = vec![
+            Element::Text("foo ".to_string(), Styles::new()),
+            Element::Link(
+                "https://reb.gg".to_string(),
+                vec![Element::Text("https://reb.gg".to_string(), Styles::new())],
+            ),
         ];
 
         assert_eq!(elements, expected);
