@@ -40,7 +40,9 @@ impl Command {
 
 #[derive(Debug, Serialize)]
 pub struct Line {
+    #[serde(rename = "n")]
     pub number: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cmd: Option<Command>,
     pub ts: i64,
     pub elements: Vec<Element>,

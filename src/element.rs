@@ -1,14 +1,40 @@
-use serde::Serialize;
-
 use crate::log::Line;
 use crate::style::Styles;
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Element {
     // Text(content, styles)
     Text(String, Styles),
     // Link(href, children)
     Link(String, Vec<Element>),
+}
+
+impl Serialize for Element {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Element::Text(content, styles) => {
+                // if there are no styles, just serialize the content as string to reduce size
+                if styles.is_empty() {
+                    return serializer.serialize_str(content);
+                }
+
+                let mut state = serializer.serialize_struct("Text", 2)?;
+                state.serialize_field("content", content)?;
+                state.serialize_field("styles", styles)?;
+                state.end()
+            }
+            Element::Link(href, children) => {
+                let mut state = serializer.serialize_struct("Link", 2)?;
+                state.serialize_field("href", href)?;
+                state.serialize_field("children", children)?;
+                state.end()
+            }
+        }
+    }
 }
 
 // Builder contructs renderable elements from a line

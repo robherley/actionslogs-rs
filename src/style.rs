@@ -10,13 +10,13 @@ pub enum Color {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct Styles {
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    #[serde(rename = "b", skip_serializing_if = "std::ops::Not::not")]
     pub bold: bool,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    #[serde(rename = "i", skip_serializing_if = "std::ops::Not::not")]
     pub italic: bool,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    #[serde(rename = "u", skip_serializing_if = "std::ops::Not::not")]
     pub underline: bool,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    #[serde(rename = "hl", skip_serializing_if = "std::ops::Not::not")]
     pub highlight: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fg: Option<Color>,
@@ -37,7 +37,12 @@ impl Styles {
     }
 
     pub fn is_empty(&self) -> bool {
-        !self.bold && !self.italic && !self.underline && self.fg.is_none() && self.bg.is_none()
+        !self.bold
+            && !self.italic
+            && !self.underline
+            && !self.highlight
+            && self.fg.is_none()
+            && self.bg.is_none()
     }
 
     pub fn apply_ansis(&mut self, ansis: &Vec<ANSISequence>) {

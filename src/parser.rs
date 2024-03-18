@@ -3,6 +3,7 @@ use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Serialize)]
+#[serde(untagged)]
 pub enum Node {
     Line(Line),
     Group(Group),
@@ -33,11 +34,8 @@ impl Parser {
     }
 
     fn end_group(&mut self) {
-        match self.nodes.last_mut() {
-            Some(Node::Group(group)) => {
-                group.ended = true;
-            }
-            _ => {}
+        if let Some(Node::Group(group)) = self.nodes.last_mut() {
+            group.ended = true;
         }
     }
 
@@ -87,12 +85,12 @@ impl Parser {
     }
 
     #[wasm_bindgen(js_name = getSearch)]
-    pub fn get_search(&self) -> String {
+    pub fn search(&self) -> String {
         self.search.clone()
     }
 
     #[wasm_bindgen(js_name = getMatches)]
-    pub fn get_matches(&self) -> usize {
+    pub fn matches(&self) -> usize {
         self.nodes
             .iter()
             .map(|node| match node {
@@ -278,7 +276,7 @@ mod tests {
         assert_eq!(find_matches(&parser), vec![false, false, false]);
 
         parser.set_search("bar");
-        assert_eq!(parser.get_matches(), 1);
+        assert_eq!(parser.matches(), 1);
         assert_eq!(find_matches(&parser), vec![false, true, false]);
         match parser.nodes.get(1) {
             Some(Node::Line(line)) => assert_eq!(line.highlights, HashMap::from([(0, 3)])),
@@ -286,7 +284,7 @@ mod tests {
         }
 
         parser.add_line("", "----> bar <----");
-        assert_eq!(parser.get_matches(), 2);
+        assert_eq!(parser.matches(), 2);
         assert_eq!(find_matches(&parser), vec![false, true, false, true]);
         match parser.nodes.get(3) {
             Some(Node::Line(line)) => assert_eq!(line.highlights, HashMap::from([(6, 9)])),
@@ -296,9 +294,9 @@ mod tests {
         parser.add_line("", "#[group]some group");
         parser.add_line("", "baz bar baz");
         parser.add_line("", "#[endgroup]");
-        assert_eq!(parser.get_matches(), 3);
+        assert_eq!(parser.matches(), 3);
 
         parser.set_search("");
-        assert_eq!(parser.get_matches(), 0);
+        assert_eq!(parser.matches(), 0);
     }
 }
