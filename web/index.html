@@ -1,111 +1,15 @@
 <!doctype html>
-<html lang="en-US">
+<html lang="en">
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta charset="utf-8" />
     <title>Actions Log Parser</title>
     <link rel="icon"
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦀</text></svg>">
-    <style>
-      * {
-        color-scheme: dark;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, helvetica, Cantarell, Ubuntu, roboto, noto, arial, sans-serif;
-        color: #c9d1d9;
-        background-color: #0d1117;
-      }
-
-      textarea {
-        font-family: Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace;
-        background-color: #3b3b3b;
-      }
-
-      pre {
-        font-family: Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace;
-        color: #63c174;
-      }
-
-      .main {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        margin: 0 auto;
-        max-width: 800px;
-      }
-
-      .main > * {
-        margin: 0.5rem;
-      }
-
-      .main > pre {
-        width: 100%;
-        overflow-x: auto;
-      }
-
-      .main > textarea {
-        width: 100%;
-      }
-
-      .main > .search {
-        align-self: flex-end;
-        margin-right: 0;
-      }
-    </style>
   </head>
   <body>
-    <script type="module">
-      import init, { Parser } from "./dist/actionslogs.js";
-      await init()
-
-      window.Parser = new Parser();
-
-      const stopwatch = (fn) => {
-        const start = performance.now();
-        fn();
-        const end = performance.now();
-        document.getElementById("clock").innerHTML = `⏱️ ${end - start} ms`;
-      }
-
-      const updateOutput = () => {
-        document.getElementById("output").innerHTML = window.Parser.stringify(true);
-      }
-
-      const updateMatches = () => {
-        document.getElementById("matches").innerHTML = `${window.Parser.getMatches()}`;
-      }
-
-      document.getElementById("lines").addEventListener("input", ({ target: {value: lines} }) =>
-        stopwatch(() => {
-          window.Parser.setRaw(lines)
-          if (window.Parser.getSearch().length > 0) {
-            updateMatches();
-          }
-          updateOutput();
-        })
-      );
-
-      document.getElementById("search").addEventListener("input", ({ target: {value: search} }) =>
-        stopwatch(() => {
-          window.Parser.setSearch(search)
-          updateMatches();
-          updateOutput();
-        })
-      );
-    </script>
-    <div class="main">
-      <h1>Actions Log Parser</h1>
-      <div class="search">
-        <span id="matches"></span>
-        <label for="search">🔍</label>
-        <input id="search" type="text" placeholder="Search" />
-      </div>
-      <textarea id="lines" rows="10" cols="100" spellcheck="false" placeholder="##[info]hello world!"></textarea>
-      <div id="clock"></div>
-      <pre id="output"></pre>
-    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

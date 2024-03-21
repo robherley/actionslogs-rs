@@ -1,10 +1,38 @@
 #!/bin/bash
 
-if ! command -v wasm-pack &> /dev/null
-then
-    echo "wasm-pack could not be found"
-    echo "get it from: https://rustwasm.github.io/wasm-pack/installer/"
-    exit 1
-fi
+_root=$(git rev-parse --show-toplevel)
+_deps=("wasm-pack" "bun")
 
-wasm-pack build --target web --out-dir web/dist/
+check_deps() {
+    for dep in "${_deps[@]}"; do
+        if ! command -v "$dep" &> /dev/null; then
+            echo "error: $dep is not installed" >&2
+            exit 1
+        fi
+    done
+}
+
+wasm() {
+    local _dst="$_root/web/gen/actionslogs"
+    wasm-pack build --target web --out-dir "$_dst"
+}
+
+js() {
+    local _cwd="$_root/web"
+    bun install --cwd "$_cwd"
+    bun run --cwd "$_cwd" build
+}
+
+check_deps
+case "$1" in
+  "--wasm")
+    wasm
+    ;;
+  "--js")
+    js
+    ;;
+  *)
+    wasm
+    js
+    ;;
+esac

@@ -1,3 +1,29 @@
 #!/bin/bash
 
-npx http-server -c-1 web/
+_root=$(git rev-parse --show-toplevel)
+
+declare -a pids=()
+
+cleanup() {
+    for pid in "${pids[@]}"; do
+        kill "$pid" 2>/dev/null
+    done
+    exit 0
+}
+
+run() {
+    local _cmd="$1"
+    local _args=("${@:2}")
+    local _pid
+    $_cmd "${_args[@]}" &
+    _pid=$!
+    pids+=("$_pid")
+}
+
+trap cleanup INT
+
+run "bun" "run" "--cwd" "$_root/web" "dev"
+run "cargo" "watch" "-w" "$_root/src" "-s" "$_root/script/build --wasm"
+
+wait
+cleanup
