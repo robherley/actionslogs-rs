@@ -9,14 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
     - name: Install wasm-pack
       run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-    - name: Build WASM
+    - name: Build
       run: script/build
     - name: Upload Artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: web/
+        path: web/dist/
   deploy:
     needs: build
     runs-on: ubuntu-latest
