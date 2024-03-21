@@ -2,7 +2,7 @@
 
 Parsing actions logs with rust 🦀
 
-🔗 [Demo](https://robherley.github.io/actionslogs-rs/)
+🔗 [Demo](https://logs.reb.gg/)
 
 ## Setup
 
