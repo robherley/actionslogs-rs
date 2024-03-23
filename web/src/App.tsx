@@ -1,21 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SearchIcon, HourglassIcon } from "@primer/octicons-react";
-import {
-    Box,
-    Header,
-    TextInput,
-    Textarea,
-    Text,
-    themeGet,
-    useTheme,
-} from "@primer/react";
-import ReactJson from "@microlink/react-json-view";
+import { Box, TextInput, Textarea, Text, themeGet } from "@primer/react";
 
-import init, { Parser } from "../gen/actionslogs";
+import Layout from "./components/Layout";
+import Preview from "./components/Preview";
+import { useParser } from "./hooks/useParser";
 
 const App = () => {
-    const theme = useTheme();
-    const [parser, setParser] = useState<Parser | null>(null);
+    const parser = useParser();
     const [raw, setRaw] = useState<string>("{}");
     const [perf, setPerf] = useState<number>(0);
     const [matches, setMatches] = useState<number>(0);
@@ -26,23 +18,10 @@ const App = () => {
         setPerf(performance.now() - start);
     };
 
-    useEffect(() => {
-        init().then(() => {
-            setParser(new Parser());
-        });
-    }, []);
-
     if (!parser) return null;
 
     return (
-        <>
-            <Header>
-                <Header.Item>
-                    <Header.Link href="https://github.com/robherley/actionslogs-rs">
-                        <span>Actions Log Parser</span>
-                    </Header.Link>
-                </Header.Item>
-            </Header>
+        <Layout>
             <Box
                 sx={{
                     margin: "0 auto",
@@ -51,7 +30,7 @@ const App = () => {
                     alignItems: "center",
                     justifyContent: "center",
                     padding: "2rem",
-                    maxWidth: "800px",
+                    maxWidth: "1000px",
                 }}
             >
                 <Box
@@ -91,8 +70,9 @@ const App = () => {
                 </Box>
                 <Textarea
                     sx={{ marginBottom: themeGet("space.4") }}
+                    style={{ resize: "none" }}
                     rows={10}
-                    cols={100}
+                    cols={1000}
                     spellCheck="false"
                     placeholder="##[info]hello world!"
                     onChange={({ target: { value } }) =>
@@ -103,22 +83,10 @@ const App = () => {
                         })
                     }
                 />
-                <ReactJson
-                    src={JSON.parse(raw)}
-                    iconStyle="circle"
-                    theme={
-                        ["night", "dark"].includes(theme.resolvedColorMode!)
-                            ? "bright"
-                            : "bright:inverted"
-                    }
-                    style={{ width: "100%", backgroundColor: "transparent" }}
-                    collapsed={false}
-                    enableClipboard={false}
-                    displayDataTypes={false}
-                    displayObjectSize={false}
-                />
+
+                <Preview raw={raw} />
             </Box>
-        </>
+        </Layout>
     );
 };
 
