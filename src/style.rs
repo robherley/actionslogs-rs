@@ -1,11 +1,30 @@
+use serde::ser::{SerializeTuple, Serializer};
 use serde::Serialize;
 
 use crate::ansi::ANSISequence;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Color {
     Bit8(u8),
     Bit24(u8, u8, u8),
+}
+
+impl Serialize for Color {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            Color::Bit8(value) => serializer.serialize_u8(value),
+            Color::Bit24(r, g, b) => {
+                let mut tuple = serializer.serialize_tuple(3)?;
+                tuple.serialize_element(&r)?;
+                tuple.serialize_element(&g)?;
+                tuple.serialize_element(&b)?;
+                tuple.end()
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -255,5 +274,28 @@ mod tests {
                 ..Styles::new()
             }
         );
+    }
+
+    #[test]
+    fn serialize() {
+        let cases = vec![
+            (Styles::new(), r#"{}"#),
+            (
+                Styles {
+                    bold: true,
+                    italic: true,
+                    underline: true,
+                    highlight: true,
+                    fg: Some(Color::Bit8(1)),
+                    bg: Some(Color::Bit24(1, 2, 3)),
+                },
+                r#"{"b":true,"i":true,"u":true,"hl":true,"fg":1,"bg":[1,2,3]}"#,
+            ),
+        ];
+
+        for (styles, expected) in cases {
+            let serialized = serde_json::to_string(&styles).unwrap();
+            assert_eq!(serialized, expected);
+        }
     }
 }

@@ -1,8 +1,8 @@
 mod ansi;
 mod element;
-mod log;
+mod line;
 mod parser;
 mod style;
 
-pub use log::{Command, Group, Line};
+pub use line::{Command, Group, Line};
 pub use parser::{Node, Parser};

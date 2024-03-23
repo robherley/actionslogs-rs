@@ -1,4 +1,4 @@
-use crate::log::{Command, Group, Line};
+use crate::line::{Command, Group, Line};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -82,11 +82,6 @@ impl Parser {
                 }
             }
         }
-    }
-
-    #[wasm_bindgen(js_name = getSearch)]
-    pub fn search(&self) -> String {
-        self.search.clone()
     }
 
     #[wasm_bindgen(js_name = getMatches)]

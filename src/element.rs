@@ -1,4 +1,4 @@
-use crate::log::Line;
+use crate::line::Line;
 use crate::style::Styles;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 

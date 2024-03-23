@@ -2,23 +2,33 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use linkify::LinkFinder;
+use serde::ser::Serializer;
 use serde::Serialize;
 
 use crate::ansi::{extract_ansi, ANSISequence};
 use crate::element::{build_elements, Element};
 
 // https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Command {
-    Command,
-    Debug,
-    Error,
-    Info,
-    Notice,
-    Verbose,
-    Warning,
-    Group,
-    EndGroup,
+    Command = 1,
+    Debug = 2,
+    Error = 3,
+    Info = 4,
+    Notice = 5,
+    Verbose = 6,
+    Warning = 7,
+    Group = 8,
+    EndGroup = 9,
+}
+
+impl Serialize for Command {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u8(*self as u8)
+    }
 }
 
 impl Command {
