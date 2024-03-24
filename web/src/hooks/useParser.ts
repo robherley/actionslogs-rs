@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 
-import init, {Parser} from "../../gen/actionslogs";
+import Parser from "../parser";
 
 export function useParser(): Parser | null {
     const [parser, setParser] = useState<Parser | null>(null);
 
     useEffect(() => {
         const initialize = async () => {
-          await init()
-          setParser(new Parser());
-        }
+            await Parser.init();
+            setParser(new Parser());
+        };
 
         initialize();
     }, []);

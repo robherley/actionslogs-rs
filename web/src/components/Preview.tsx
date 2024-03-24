@@ -7,18 +7,19 @@ import {
     themeGet,
 } from "@primer/react";
 import ReactJson from "@microlink/react-json-view";
+import type { Node } from "../parser";
 
 interface PreviewProps {
-    raw: string;
+    nodes: Node[];
 }
 
-const JSObject: React.FC<PreviewProps> = ({ raw }) => {
+const JSObject: React.FC<PreviewProps> = ({ nodes }) => {
     const theme = useTheme();
 
     try {
         return (
             <ReactJson
-                src={JSON.parse(raw)}
+                src={nodes}
                 iconStyle="circle"
                 theme={
                     ["night", "dark"].includes(theme.resolvedColorMode!)
@@ -47,7 +48,7 @@ const Rendered: React.FC<PreviewProps> = () => {
     return <Box>Coming soon!</Box>;
 };
 
-const Preview: React.FC<{ raw: string }> = ({ raw }) => {
+const Preview: React.FC<PreviewProps> = ({ nodes }) => {
     const [switcher, setSwitcher] = useState<number>(1);
 
     const controls: { label: string; component: React.FC<PreviewProps> }[] = [
@@ -81,7 +82,7 @@ const Preview: React.FC<{ raw: string }> = ({ raw }) => {
                     </SegmentedControl.Button>
                 ))}
             </SegmentedControl>
-            <PreviewComponent raw={raw} />
+            <PreviewComponent nodes={nodes} />
         </Box>
     );
 };

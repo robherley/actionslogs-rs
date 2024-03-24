@@ -4,11 +4,12 @@ import { Box, TextInput, Textarea, Text, themeGet } from "@primer/react";
 
 import Layout from "./components/Layout";
 import Preview from "./components/Preview";
+import type { Node } from "./parser";
 import { useParser } from "./hooks/useParser";
 
 const App = () => {
     const parser = useParser();
-    const [raw, setRaw] = useState<string>("{}");
+    const [nodes, setNodes] = useState<Node[]>([]);
     const [perf, setPerf] = useState<number>(0);
     const [matches, setMatches] = useState<number>(0);
 
@@ -62,7 +63,7 @@ const App = () => {
                         onChange={({ target: { value } }) =>
                             stopWatch(() => {
                                 parser.setSearch(value);
-                                setRaw(parser.stringify(false));
+                                setNodes(parser.nodes());
                                 setMatches(parser.getMatches());
                             })
                         }
@@ -78,13 +79,13 @@ const App = () => {
                     onChange={({ target: { value } }) =>
                         stopWatch(() => {
                             parser.setRaw(value);
-                            setRaw(parser.stringify(false));
+                            setNodes(parser.nodes());
                             setMatches(parser.getMatches());
                         })
                     }
                 />
 
-                <Preview raw={raw} />
+                <Preview nodes={nodes} />
             </Box>
         </Layout>
     );
