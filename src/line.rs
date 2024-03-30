@@ -50,12 +50,11 @@ impl Command {
 
 #[derive(Debug, Serialize)]
 pub struct Line {
+    pub ts: i64,
     #[serde(rename = "n")]
     pub number: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cmd: Option<Command>,
-    pub ts: i64,
-    pub elements: Vec<Element>,
     #[serde(skip)]
     pub content: String,
     #[serde(skip)]
@@ -64,6 +63,10 @@ pub struct Line {
     pub ansis: HashMap<usize, Vec<ANSISequence>>,
     #[serde(skip)]
     pub highlights: HashMap<usize, usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<Group>,
+    // TODO(robherley): maybe remove elements from this struct
+    pub elements: Vec<Element>,
 }
 
 impl Line {
@@ -87,6 +90,7 @@ impl Line {
             ansis,
             highlights: HashMap::new(),
             elements: Vec::new(),
+            group: None,
         };
 
         // TODO(robherley): fix this/make it not awkward
@@ -94,6 +98,20 @@ impl Line {
         line.elements = elements;
 
         line
+    }
+
+    pub fn matches(&self) -> usize {
+        let mut matches = self.highlights.len();
+
+        if let Some(ref group) = self.group {
+            matches += group
+                .children
+                .iter()
+                .map(|line| line.highlights.len())
+                .sum::<usize>();
+        }
+
+        matches
     }
 
     pub fn highlight(&mut self, search_term: &str) {
@@ -115,6 +133,13 @@ impl Line {
             .collect();
 
         self.elements = build_elements(self);
+
+        if let Some(ref mut group) = self.group {
+            group
+                .children
+                .iter_mut()
+                .for_each(|child| child.highlight(search_term));
+        }
     }
 
     fn parse_ts<'a>(id: Option<&'a str>, raw: &str) -> (i64, String) {
@@ -162,6 +187,30 @@ impl Line {
             None => (None, raw),
         }
     }
+
+    pub fn start_group(&mut self) {
+        if self.group.is_none() {
+            self.group = Some(Group::new());
+        }
+    }
+
+    pub fn end_group(&mut self) {
+        if let Some(ref mut group) = self.group {
+            group.ended = true;
+        }
+    }
+
+    pub fn add_child(&mut self, child: Line) {
+        match self.group {
+            Some(ref mut group) => group.children.push(child),
+            None => {
+                self.group = Some(Group {
+                    children: vec![child],
+                    ended: false,
+                });
+            }
+        }
+    }
 }
 
 impl From<&str> for Line {
@@ -172,23 +221,16 @@ impl From<&str> for Line {
 
 #[derive(Debug, Serialize)]
 pub struct Group {
-    pub line: Line,
     pub children: Vec<Line>,
-    #[serde(skip)]
     pub ended: bool,
 }
 
 impl Group {
-    pub fn new(line: Line) -> Self {
+    pub fn new() -> Self {
         Self {
-            line,
             ended: false,
             children: Vec::new(),
         }
-    }
-
-    pub fn add_line(&mut self, line: Line) {
-        self.children.push(line);
     }
 }
 
@@ -268,5 +310,17 @@ mod tests {
         line.highlight("");
 
         assert_eq!(line.highlights.len(), 0);
+    }
+
+    #[test]
+    fn matches() {
+        let mut line = Line::new(1, None, "foo bar baz bAr");
+        line.highlight("bar");
+        assert_eq!(line.matches(), 2);
+
+        line = Line::new(1, None, "hello world");
+        line.add_child(Line::new(2, None, "goodbye world"));
+        line.highlight("world");
+        assert_eq!(line.matches(), 2);
     }
 }

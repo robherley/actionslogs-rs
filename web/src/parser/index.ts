@@ -1,18 +1,17 @@
 import * as actionslogs from "../../gen/actionslogs/actionslogs";
 import type { InitInput } from "../../gen/actionslogs/actionslogs";
 
-export type Node = Line | Group;
-
 export interface Line {
     n: number;
     ts: number;
     cmd?: Command;
     elements: Element[];
+    group?: Group;
 }
 
 export interface Group {
-    line: Line;
     children: Line[];
+    ended: boolean;
 }
 
 export enum Command {
@@ -27,7 +26,7 @@ export enum Command {
     EndGroup = 9,
 }
 
-type Element = TextElement | LinkElement | string;
+export type Element = TextElement | LinkElement | string;
 
 export interface TextElement {
     content: string;
@@ -39,28 +38,30 @@ export interface LinkElement {
     children: Element[];
 }
 
-interface Styles {
+export interface Styles {
     b?: boolean;
     i?: boolean;
     u?: boolean;
     hl?: boolean;
-    fg?: number | [number, number, number];
-    bg?: number | [number, number, number];
+    fg?: Color;
+    bg?: Color;
 }
+
+export type Color = number | [number, number, number];
 
 class Parser extends actionslogs.Parser {
     constructor() {
         super();
     }
 
-    nodes(): Node[] {
+    lines(): Line[] {
         const parsed = JSON.parse(this.stringify(false));
         if (!Array.isArray(parsed)) {
             throw new TypeError("expected array");
         }
 
         // TODO: maybe validate a little bit
-        return parsed as Node[];
+        return parsed as Line[];
     }
 
     static async init(

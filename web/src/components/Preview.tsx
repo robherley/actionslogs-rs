@@ -5,21 +5,23 @@ import {
     SegmentedControl,
     useTheme,
     themeGet,
+    Token,
 } from "@primer/react";
 import ReactJson from "@microlink/react-json-view";
-import type { Node } from "../parser";
+import type { Line, Element, Color } from "../parser";
 
 interface PreviewProps {
-    nodes: Node[];
+    lines: Line[];
 }
 
-const JSObject: React.FC<PreviewProps> = ({ nodes }) => {
+const JSObject: React.FC<PreviewProps> = ({ lines }) => {
     const theme = useTheme();
 
     try {
         return (
             <ReactJson
-                src={nodes}
+                name={false}
+                src={lines}
                 iconStyle="circle"
                 theme={
                     ["night", "dark"].includes(theme.resolvedColorMode!)
@@ -44,11 +46,114 @@ const JSObject: React.FC<PreviewProps> = ({ nodes }) => {
     }
 };
 
-const Rendered: React.FC<PreviewProps> = () => {
-    return <Box>Coming soon!</Box>;
+const colorToCSS = (color: Color): string => {
+    if (Array.isArray(color)) {
+        return `rgb(${color.join(",")})`;
+    }
+
+    return (
+        [
+            "black",
+            "red",
+            "green",
+            "yellow",
+            "blue",
+            "magenta",
+            "cyan",
+            "white",
+            "gray",
+            "dark gray",
+            "light red",
+            "light green",
+            "light yellow",
+            "light blue",
+            "light magenta",
+            "light cyan",
+            "light white",
+        ][color] || "inherit"
+    );
 };
 
-const Preview: React.FC<PreviewProps> = ({ nodes }) => {
+const renderElement = (element: Element): JSX.Element | null => {
+    if (typeof element === "string") {
+        return <span>{element}</span>;
+    }
+
+    if ("href" in element) {
+        return (
+            <a href={element.href}>
+                {element.children.map((child) => renderElement(child))}
+            </a>
+        );
+    }
+
+    if ("content" in element) {
+        const style: React.CSSProperties = {};
+
+        if (element.styles.b) {
+            style.fontWeight = "bold";
+        }
+
+        if (element.styles.i) {
+            style.fontStyle = "italic";
+        }
+
+        if (element.styles.u) {
+            style.textDecoration = "underline";
+        }
+
+        if (element.styles.hl) {
+            style.color = "yellow";
+        }
+
+        if (element.styles.fg) {
+            style.color = colorToCSS(element.styles.fg);
+        }
+
+        if (element.styles.bg) {
+            style.backgroundColor = colorToCSS(element.styles.bg);
+        }
+        return <span style={style}>{element.content}</span>;
+    }
+
+    return null;
+};
+
+const renderLine = (line: Line): JSX.Element => {
+    if (line.group) {
+        return (
+            <>
+                <details key={line.n}>
+                    <summary>
+                        {line.n} {line.elements.map(renderElement)}
+                    </summary>
+                    {line.group.children.map(renderLine)}
+                </details>
+            </>
+        );
+    }
+
+    return (
+        <div key={line.n}>
+            {line.n} {line.elements.map(renderElement)}
+        </div>
+    );
+};
+
+const Rendered: React.FC<PreviewProps> = ({ lines }) => {
+    return (
+        <>
+            <div>
+                <Token text="Work in Progress" />
+            </div>
+            <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                {lines.map(renderLine)}
+            </pre>
+        </>
+    );
+};
+
+const Preview: React.FC<PreviewProps> = ({ lines }) => {
     const [switcher, setSwitcher] = useState<number>(1);
 
     const controls: { label: string; component: React.FC<PreviewProps> }[] = [
@@ -82,7 +187,7 @@ const Preview: React.FC<PreviewProps> = ({ nodes }) => {
                     </SegmentedControl.Button>
                 ))}
             </SegmentedControl>
-            <PreviewComponent nodes={nodes} />
+            <PreviewComponent lines={lines} />
         </Box>
     );
 };

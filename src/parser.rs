@@ -1,19 +1,12 @@
-use crate::line::{Command, Group, Line};
+use crate::line::{Command, Line};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
-
-#[derive(Debug, Serialize)]
-#[serde(untagged)]
-pub enum Node {
-    Line(Line),
-    Group(Group),
-}
 
 #[wasm_bindgen]
 #[derive(Debug, Serialize)]
 pub struct Parser {
     idx: usize,
-    nodes: Vec<Node>,
+    lines: Vec<Line>,
     search: String,
 }
 
@@ -23,27 +16,30 @@ impl Parser {
     pub fn new() -> Self {
         Self {
             idx: 1,
-            nodes: Vec::new(),
+            lines: Vec::new(),
             search: "".to_string(),
         }
     }
 
     fn reset(&mut self) {
-        self.nodes.clear();
+        self.lines.clear();
         self.idx = 1;
     }
 
     fn end_group(&mut self) {
-        if let Some(Node::Group(group)) = self.nodes.last_mut() {
-            group.ended = true;
+        if let Some(line) = self.lines.last_mut() {
+            line.end_group();
         }
     }
 
     fn in_group(&self) -> bool {
-        match self.nodes.last() {
-            Some(Node::Group(group)) => !group.ended,
-            _ => false,
+        if let Some(line) = self.lines.last() {
+            if let Some(group) = &line.group {
+                return !group.ended;
+            }
         }
+
+        false
     }
 
     #[wasm_bindgen(js_name = stringify)]
@@ -54,7 +50,7 @@ impl Parser {
             serde_json::to_string
         };
 
-        match serialize_fn(&self.nodes) {
+        match serialize_fn(&self.lines) {
             Ok(json) => Ok(json),
             Err(err) => Err(JsError::new(&format!("{:?}", err))),
         }
@@ -69,34 +65,14 @@ impl Parser {
     #[wasm_bindgen(js_name = setSearch)]
     pub fn set_search(&mut self, search: &str) {
         self.search = search.to_lowercase();
-        for node in self.nodes.iter_mut() {
-            match node {
-                Node::Line(line) => {
-                    line.highlight(&self.search);
-                }
-                Node::Group(group) => {
-                    group.line.highlight(&self.search);
-                    for line in group.children.iter_mut() {
-                        line.highlight(&self.search);
-                    }
-                }
-            }
+        for line in self.lines.iter_mut() {
+            line.highlight(&self.search);
         }
     }
 
     #[wasm_bindgen(js_name = getMatches)]
     pub fn matches(&self) -> usize {
-        self.nodes
-            .iter()
-            .map(|node| match node {
-                Node::Line(line) => line.highlights.len(),
-                Node::Group(group) => group
-                    .children
-                    .iter()
-                    .map(|line| line.highlights.len())
-                    .sum(),
-            })
-            .sum()
+        self.lines.iter().map(|line| line.matches()).sum()
     }
 
     #[wasm_bindgen(js_name = addLine)]
@@ -117,23 +93,20 @@ impl Parser {
                 }
 
                 // otherwise treat endgroup as a regular line
-                self.nodes.push(Node::Line(line));
+                self.lines.push(line);
             }
             Some(Command::Group) => {
                 self.end_group();
-                let new_group = Group::new(line);
-                self.nodes.push(Node::Group(new_group));
+                line.start_group();
+                self.lines.push(line);
             }
             _ => {
                 if self.in_group() {
-                    match self.nodes.last_mut() {
-                        Some(Node::Group(group)) => {
-                            group.add_line(line);
-                        }
-                        _ => {}
+                    if let Some(last_line) = self.lines.last_mut() {
+                        last_line.add_child(line);
                     }
                 } else {
-                    self.nodes.push(Node::Line(line));
+                    self.lines.push(line);
                 }
             }
         }
@@ -162,16 +135,11 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_raw(lines);
 
-        assert_eq!(parser.nodes.len(), 6);
+        assert_eq!(parser.lines.len(), 6);
 
-        for (i, node) in parser.nodes.iter().enumerate() {
-            match node {
-                Node::Line(line) => {
-                    assert_eq!(line.number, i + 1);
-                    assert_eq!(line.cmd, None);
-                }
-                _ => panic!("expected Node::Line"),
-            }
+        for (i, line) in parser.lines.iter().enumerate() {
+            assert_eq!(line.number, i + 1);
+            assert_eq!(line.cmd, None);
         }
     }
 
@@ -197,12 +165,12 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_raw(lines);
 
-        assert_eq!(parser.nodes.len(), 3);
+        assert_eq!(parser.lines.len(), 3);
 
         let expected_children: Vec<usize> = vec![3, 4, 1];
-        for (i, node) in parser.nodes.iter().enumerate() {
-            match node {
-                Node::Group(group) => {
+        for (i, line) in parser.lines.iter().enumerate() {
+            match &line.group {
+                Some(group) => {
                     assert_eq!(group.children.len(), expected_children[i]);
                 }
                 _ => panic!("expected Node::Group"),
@@ -227,25 +195,22 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_raw(lines);
 
-        assert_eq!(parser.nodes.len(), 5);
+        assert_eq!(parser.lines.len(), 5);
 
         let expected_group = vec![true, false, true, false, false];
-        for (i, node) in parser.nodes.iter().enumerate() {
-            match node {
-                Node::Group(_) => {
-                    assert!(expected_group[i], "expected Node::Group");
+        for (i, line) in parser.lines.iter().enumerate() {
+            match line.group {
+                Some(_) => {
+                    assert!(expected_group[i], "expected group");
                 }
-                _ => assert!(!expected_group[i], "expected Node::Line"),
+                _ => assert!(!expected_group[i], "did not expect group"),
             }
         }
 
         // since the last two endgroups are not closing any groups, they are rendered as regular lines
-        parser.nodes[3..].iter().for_each(|node| match node {
-            Node::Line(line) => match line.cmd {
-                Some(Command::EndGroup) => {}
-                _ => panic!("expected Command::EndGroup"),
-            },
-            _ => panic!("expected Node::Line"),
+        parser.lines[3..].iter().for_each(|line| match line.cmd {
+            Some(Command::EndGroup) => {}
+            _ => panic!("expected Command::EndGroup"),
         });
     }
 
@@ -257,33 +222,26 @@ mod tests {
         parser.set_raw(lines);
 
         let find_matches = |parser: &Parser| -> Vec<bool> {
-            parser
-                .nodes
-                .iter()
-                .map(|node| match node {
-                    Node::Line(line) => !line.highlights.is_empty(),
-                    _ => false,
-                })
-                .collect()
+            parser.lines.iter().map(|line| line.matches() > 0).collect()
         };
 
-        assert_eq!(parser.nodes.len(), 3);
+        assert_eq!(parser.lines.len(), 3);
         assert_eq!(find_matches(&parser), vec![false, false, false]);
 
         parser.set_search("bar");
         assert_eq!(parser.matches(), 1);
         assert_eq!(find_matches(&parser), vec![false, true, false]);
-        match parser.nodes.get(1) {
-            Some(Node::Line(line)) => assert_eq!(line.highlights, HashMap::from([(0, 3)])),
-            _ => panic!("expected Node::Line"),
+        match parser.lines.get(1) {
+            Some(line) => assert_eq!(line.highlights, HashMap::from([(0, 3)])),
+            _ => panic!("expected line at index 1"),
         }
 
         parser.add_line("", "----> bar <----");
         assert_eq!(parser.matches(), 2);
         assert_eq!(find_matches(&parser), vec![false, true, false, true]);
-        match parser.nodes.get(3) {
-            Some(Node::Line(line)) => assert_eq!(line.highlights, HashMap::from([(6, 9)])),
-            _ => panic!("expected Node::Line"),
+        match parser.lines.get(3) {
+            Some(line) => assert_eq!(line.highlights, HashMap::from([(6, 9)])),
+            _ => panic!("expected line at index 3"),
         }
 
         parser.add_line("", "#[group]some group");

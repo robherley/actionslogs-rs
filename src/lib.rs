@@ -5,4 +5,4 @@ mod parser;
 mod style;
 
 pub use line::{Command, Group, Line};
-pub use parser::{Node, Parser};
+pub use parser::Parser;
