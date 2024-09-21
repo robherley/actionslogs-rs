@@ -4,6 +4,8 @@ Parsing actions logs with rust 🦀
 
 🔗 [Demo](https://logs.reb.gg/)
 
+If you want something slower, there's [`robherley/actionslogs-js`](https://github.com/robherley/actionslogs-js/) too.
+
 ## Setup
 
 Requires:
