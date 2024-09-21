@@ -36,7 +36,7 @@ impl ANSISequence {
             // https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
             30..=37 => Some((ANSISequence::SetFG8(seq[0] - 30), 1)), // 30-37 are the 4bit colors
             38 => match (seq.get(1), seq.get(2), seq.get(3), seq.get(4)) {
-                (Some(5), Some(0..=255), None, None) => Some((ANSISequence::SetFG8(seq[2]), 3)),
+                (Some(5), Some(0..=255), _, _) => Some((ANSISequence::SetFG8(seq[2]), 3)),
                 (Some(2), Some(0..=255), Some(0..=255), Some(0..=255)) => {
                     Some((ANSISequence::SetFG24(seq[2], seq[3], seq[4]), 5))
                 }
@@ -45,7 +45,7 @@ impl ANSISequence {
             39 => Some((ANSISequence::DefaultFG, 1)),
             40..=47 => Some((ANSISequence::SetBG8(seq[0] - 40), 1)), // 40-47 are the 4bit colors
             48 => match (seq.get(1), seq.get(2), seq.get(3), seq.get(4)) {
-                (Some(5), Some(0..=255), None, None) => Some((ANSISequence::SetBG8(seq[2]), 3)),
+                (Some(5), Some(0..=255), _, _) => Some((ANSISequence::SetBG8(seq[2]), 3)),
                 (Some(2), Some(0..=255), Some(0..=255), Some(0..=255)) => {
                     Some((ANSISequence::SetBG24(seq[2], seq[3], seq[4]), 5))
                 }
